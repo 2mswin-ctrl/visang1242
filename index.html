@@ -1,1 +1,973 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1-2-4(2) 존중하는 언어생활</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .hidden-section { display: none !important; }
+        
+        /* Modal Styles */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #718096;
+            cursor: pointer;
+        }
+        .close-btn:hover { color: #1a202c; }
 
+        /* Flashcard Styles */
+        .flashcard-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        @media (min-width: 768px) {
+            .flashcard-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        .flashcard {
+            border: 2px solid #e2e8f0;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px;
+            background-color: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .flashcard:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); border-color: #cbd5e1; }
+        .flashcard .word-meaning { display: none; margin-top: 10px; font-size: 0.9em; color: #4a5568; }
+        .flashcard .word-example { display: none; margin-top: 5px; font-size: 0.85em; color: #2b6cb0; font-weight: bold; }
+        .flashcard.flipped .word-term { display: none; }
+        .flashcard.flipped .word-meaning, .flashcard.flipped .word-example { display: block; }
+
+        /* Game Styles */
+        #game-container {
+            width: 100%;
+            height: 450px;
+            background-color: #2d3748;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.3);
+        }
+        #player-plane {
+            width: 50px;
+            height: 50px;
+            background-color: #4299e1;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: left 0.1s linear;
+        }
+        .falling-word {
+            position: absolute;
+            color: #fff;
+            font-weight: bold;
+            padding: 8px 12px;
+            background-color: #e53e3e;
+            border-radius: 6px;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            font-size: 1.1rem;
+            transform: translateX(-50%);
+        }
+        .bullet {
+            width: 6px;
+            height: 20px;
+            background-color: #ecc94b;
+            position: absolute;
+            border-radius: 3px;
+            box-shadow: 0 0 8px #faf089;
+        }
+        #target-meaning-display {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fefcbf;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            background-color: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 30px;
+            z-index: 10;
+            width: 90%;
+        }
+        @media (min-width: 768px) {
+            #target-meaning-display { font-size: 1.3rem; width: 80%; }
+        }
+        #game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+        }
+
+        /* Quiz Styles */
+        .quiz-question { margin-bottom: 25px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #fff; }
+        .quiz-feedback { margin-top: 15px; padding: 15px; border-radius: 6px; display: none; font-weight: bold; }
+        .feedback-correct { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .feedback-incorrect { background-color: #fed7d7; color: #742a2a; border: 1px solid #feb2b2; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <nav class="bg-indigo-600 text-white p-4 shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl md:text-2xl font-bold">1-2-4(2) 존중하는 언어생활</h1>
+            <div class="flex space-x-4 md:space-x-6 text-base md:text-lg font-semibold">
+                <button onclick="showSection('theory')" class="hover:text-indigo-200 transition focus:outline-none">학습 내용</button>
+                <button onclick="showSection('vocabulary')" class="hover:text-indigo-200 transition focus:outline-none">어휘 정리</button>
+                <button onclick="showSection('quiz')" class="hover:text-indigo-200 transition focus:outline-none">형성 평가</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto mt-8 p-4 max-w-5xl">
+
+        <!-- 1. 이론 학습 섹션 -->
+        <section id="theory-section" class="content-section">
+            <h2 class="text-3xl font-bold mb-8 border-b-4 border-indigo-500 pb-3 inline-block">학습 내용</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="bg-white p-8 rounded-xl shadow-md border-t-4 border-blue-500 cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openModal('modal-concept')">
+                    <h3 class="text-2xl font-bold text-blue-800 mb-3">언어폭력의 개념과 유형</h3>
+                    <p class="text-gray-500 text-sm font-semibold">자세히 보기 (클릭)</p>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-md border-t-4 border-red-500 cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openModal('modal-problem')">
+                    <h3 class="text-2xl font-bold text-red-800 mb-3">언어폭력의 문제점</h3>
+                    <p class="text-gray-500 text-sm font-semibold">자세히 보기 (클릭)</p>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-md border-t-4 border-green-500 cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openModal('modal-respect')">
+                    <h3 class="text-2xl font-bold text-green-800 mb-3">서로 존중하는 말하기</h3>
+                    <p class="text-gray-500 text-sm font-semibold">자세히 보기 (클릭)</p>
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 p-6 md:p-8 rounded-xl shadow-sm border border-yellow-200">
+                <h3 class="text-2xl font-bold text-yellow-800 mb-5">교과서 적용: '우리들' 시나리오 분석</h3>
+                <p class="mb-6 text-lg text-gray-700"><strong>상황 분석:</strong> 선과 지아가 겪은 갈등 상황에서 주고받은 말의 폭력성 분석.</p>
+                
+                <div class="mb-6 bg-white p-5 rounded-lg shadow-sm border-l-4 border-yellow-400">
+                    <h4 class="font-bold text-lg text-gray-800 mb-2">1. '선'이 들은 말 중 언어폭력</h4>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-2">
+                        <li><strong>해당하는 말:</strong> "네가 필요한 건 네가 사...", "쟤 좀 이상한 냄새나는 것 같지 않아?", "너네 아빠 진짜 알코올 중독자냐?"</li>
+                        <li><strong>그렇게 생각한 까닭:</strong> 대상에게 심한 수치심과 모멸감 <strong>부여.</strong> 가족을 부정적으로 표현하여 명예 <strong>훼손.</strong></li>
+                    </ul>
+                </div>
+                <div class="mb-6 bg-white p-5 rounded-lg shadow-sm border-l-4 border-yellow-400">
+                    <h4 class="font-bold text-lg text-gray-800 mb-2">2. '지아'가 들은 말 중 언어폭력</h4>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-2">
+                        <li><strong>해당하는 말:</strong> "너도 왕따였다며?", "거짓말하는 애를 누가 좋아해?"</li>
+                        <li><strong>그렇게 생각한 까닭:</strong> 밝히고 싶지 않은 과거 비밀의 공개적 <strong>폭로.</strong> 단정적인 판단에 의한 인격 <strong>비하.</strong></li>
+                    </ul>
+                </div>
+                <div class="bg-white p-5 rounded-lg shadow-sm border-l-4 border-yellow-400">
+                    <h4 class="font-bold text-lg text-gray-800 mb-2">3. 친구 관계에 미치는 영향</h4>
+                    <p class="text-gray-700 ml-2">언어폭력은 친구 간 새로운 갈등을 유발하며 기존 갈등 <strong>악화.</strong> 관계의 극심한 불편함 초래 및 사회적 고립 <strong>유발.</strong></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 이론 팝업 모달들 -->
+        <div id="modal-concept" class="custom-modal flex">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal('modal-concept')">&times;</span>
+                <h2 class="text-2xl md:text-3xl font-bold mb-5 text-blue-800 border-b-2 border-blue-200 pb-3">개념, 유형</h2>
+                <ul class="list-disc list-inside space-y-3 text-gray-800 text-base md:text-lg">
+                    <li><strong>개념:</strong> 부정적인 언어 표현으로 상대방의 마음에 상처를 주는 <strong>행위.</strong></li>
+                    <li><strong>유형:</strong>
+                        <ul class="list-[circle] list-inside ml-4 md:ml-8 mt-2 space-y-2">
+                            <li>다수 앞에서 누군가의 명예를 훼손하는 <strong>말.</strong></li>
+                            <li>개인 및 다수에게 심한 수치심을 주는 모욕적인 <strong>말.</strong></li>
+                            <li>정신 및 신체 등에 해를 끼칠 듯한 협박성 <strong>문자.</strong></li>
+                            <li>가상 공간에서 소문을 퍼뜨리는 악의적인 <strong>이야기.</strong></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="modal-problem" class="custom-modal flex">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal('modal-problem')">&times;</span>
+                <h2 class="text-2xl md:text-3xl font-bold mb-5 text-red-800 border-b-2 border-red-200 pb-3">언어폭력의 문제점</h2>
+                <ul class="list-disc list-inside space-y-3 text-gray-800 text-base md:text-lg">
+                    <li>피해자에게 우울감이나 불안감 등 정신적인 고통 <strong>부여.</strong></li>
+                    <li>피해자의 사회적인 관계 형성에 극심한 어려움 <strong>초래.</strong></li>
+                    <li>가해자 자신의 인격 형성에도 부정적인 영향 <strong>미침.</strong></li>
+                    <li>가상 공간의 경우 시간과 장소를 불문하고 지속되며 빠른 확산 <strong>위험.</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="modal-respect" class="custom-modal flex">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal('modal-respect')">&times;</span>
+                <h2 class="text-2xl md:text-3xl font-bold mb-5 text-green-800 border-b-2 border-green-200 pb-3">존중하는 말하기</h2>
+                <h3 class="font-bold text-lg md:text-xl mt-3 mb-2 text-indigo-700 bg-indigo-50 p-2 rounded">서로 존중하는 말하기 방법</h3>
+                <ul class="list-disc list-inside space-y-2 text-gray-800 mb-6 ml-2 text-sm md:text-base">
+                    <li>자기중심적인 생각에서 벗어나 상대방의 처지에서 생각하며 <strong>말하기.</strong></li>
+                    <li>부정적인 표현 대신 긍정적인 표현 <strong>사용.</strong></li>
+                    <li>부드러운 말투와 상대를 배려하는 태도 <strong>유지.</strong></li>
+                    <li>상대방의 인격을 존중하며 차별이나 편견이 담긴 표현 <strong>지양.</strong></li>
+                    <li>'나 전달법' <strong>활용</strong> (자신의 상황, 감정, 기대를 중심으로 <strong>표현.</strong>)</li>
+                </ul>
+
+                <h3 class="font-bold text-lg md:text-xl mt-5 mb-2 text-pink-700 bg-pink-50 p-2 rounded">💡 '나 전달법' 자세히 알아보기</h3>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6">
+                    <p class="mb-4 text-gray-800 text-sm md:text-base"><strong>1. 개념:</strong> 나를 주어로 하여 상대방의 행동에 대한 나의 생각이나 감정을 솔직하게 표현하는 대화 방식입니다. 상대를 비난하지 않으므로 방어적인 태도를 줄이고 갈등을 원만하게 해결할 수 있습니다.</p>
+                    <p class="mb-2 text-gray-800 font-bold text-sm md:text-base">2. 방법 (3요소):</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 mb-4 ml-2 text-sm md:text-base">
+                        <li><strong>상황 (객관적 행동):</strong> 문제 되는 상대방의 행동을 비난 없이 있는 그대로 설명하기</li>
+                        <li><strong>감정 (나의 느낌):</strong> 그 행동으로 인해 내가 겪는 어려움이나 솔직한 감정 표현하기</li>
+                        <li><strong>기대 (바라는 점):</strong> 내가 상대방에게 바라는 구체적인 해결책이나 기대 말하기</li>
+                    </ul>
+                    <p class="mb-2 text-gray-800 font-bold text-sm md:text-base">3. 예시: <span class="font-normal text-gray-600">(친구가 약속 시간에 30분 늦은 상황)</span></p>
+                    <div class="bg-white p-4 rounded-lg border border-pink-200 text-sm md:text-base text-gray-800 shadow-sm leading-relaxed">
+                        "<span class="text-blue-600 font-bold">[상황]</span> 네가 연락도 없이 30분이나 늦어서,<br>
+                        <span class="text-red-500 font-bold">[감정]</span> 나는 무슨 사고가 난 줄 알고 너무 걱정했어.<br>
+                        <span class="text-green-600 font-bold">[기대]</span> 다음부턴 늦을 것 같으면 미리 연락해 주면 좋겠어."
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-lg md:text-xl mt-3 mb-2 text-indigo-700 bg-indigo-50 p-2 rounded">서로 존중하는 말하기의 효과</h3>
+                <ul class="list-disc list-inside space-y-2 text-gray-800 ml-2 text-sm md:text-base">
+                    <li>갈등 및 문제 상황의 원만한 <strong>해결.</strong></li>
+                    <li>자신의 생각이나 감정의 효과적이고 정확한 <strong>전달.</strong></li>
+                    <li>다른 사람과의 긍정적이고 발전적인 관계 <strong>형성.</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 2. 어휘 정리 섹션 -->
+        <section id="vocabulary-section" class="content-section hidden-section">
+            <h2 class="text-3xl font-bold mb-8 border-b-4 border-indigo-500 pb-3 inline-block">어휘 정리 및 단어 슈팅 게임</h2>
+            
+            <div class="mb-10 bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-xl md:text-2xl font-bold mb-4 text-indigo-800 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    어휘 플래시 카드 (클릭하여 뜻 확인)
+                </h3>
+                <p class="text-gray-600 mb-6 font-semibold text-sm md:text-base">학습지에 수록된 단어입니다. 카드를 클릭하면 의미와 예시를 확인할 수 있습니다.</p>
+                <div class="flashcard-grid" id="flashcard-container">
+                    <!-- Flashcards will be generated by JS -->
+                </div>
+            </div>
+
+            <div class="bg-white p-4 md:p-6 rounded-xl shadow-md">
+                <h3 class="text-xl md:text-2xl font-bold mb-3 text-red-700 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    단어 슈팅 게임
+                </h3>
+                <div class="bg-slate-100 p-4 rounded-lg mb-4 border border-slate-200">
+                    <p class="text-gray-800 text-sm md:text-base">
+                        <strong>게임 방법:</strong> 화면 상단에 제시된 <strong>'뜻'</strong>을 읽고, 떨어지는 단어 중 알맞은 단어를 쏘아 맞추세요.<br>
+                        <strong>조작 방법:</strong> PC(방향키 <code>←</code> <code>→</code> 및 <code>Space</code> 발사), 모바일(게임 화면 터치로 비행기 이동, 자동 발사).<br>
+                        <strong>진행 규칙:</strong> 정답을 맞출 때마다 속도가 증가합니다. 오답 격추 시 점수가 차감됩니다.
+                    </p>
+                </div>
+                
+                <div id="game-container">
+                    <div id="target-meaning-display">게임 시작 버튼을 클릭하세요</div>
+                    <div id="player-plane"></div>
+                    <div id="game-overlay">
+                        <h2 class="text-3xl md:text-4xl font-black mb-4 tracking-wider text-yellow-300">단어 슈팅 게임</h2>
+                        <p class="mb-8 text-lg md:text-xl font-bold text-center">상단의 뜻에 알맞은 단어를 격추하세요!</p>
+                        <button id="start-game-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full text-xl md:text-2xl shadow-lg transform transition hover:scale-105 focus:outline-none">게임 시작</button>
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-col md:flex-row justify-between font-black text-lg md:text-xl text-gray-800 bg-slate-200 p-3 rounded-lg gap-2">
+                    <span>획득 점수: <span id="score-display" class="text-blue-600">0</span> 점</span>
+                    <span>현재 속도: <span id="speed-display" class="text-red-600">0.5</span> 배속</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 형성 평가 섹션 -->
+        <section id="quiz-section" class="content-section hidden-section">
+            <h2 class="text-3xl font-bold mb-8 border-b-4 border-indigo-500 pb-3 inline-block">형성 평가</h2>
+
+            <div id="student-info-form" class="bg-white p-6 md:p-8 rounded-xl mb-8 shadow-lg border-t-4 border-indigo-600">
+                <h3 class="text-2xl font-bold mb-6 text-indigo-800">인적 사항 입력</h3>
+                <p class="text-gray-600 mb-4 font-semibold text-sm md:text-base">평가를 시작하기 전 인적 사항을 입력하여 주십시오.</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">학년</label>
+                        <input type="number" id="info-grade" class="block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1" max="6">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">반</label>
+                        <input type="number" id="info-class" class="block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">번호</label>
+                        <input type="number" id="info-number" class="block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">이름</label>
+                        <input type="text" id="info-name" class="block w-full rounded-md border-gray-300 shadow-sm p-3 border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <button id="start-quiz-btn" class="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-4 rounded-lg text-lg md:text-xl shadow-md transition transform hover:-translate-y-1 focus:outline-none">평가 시작하기</button>
+            </div>
+
+            <div id="quiz-container" class="hidden-section">
+                <form id="quiz-form">
+                    <!-- Questions will be injected here via JS -->
+                </form>
+                <button id="submit-quiz-btn" type="button" class="mt-8 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-4 rounded-lg text-lg md:text-xl shadow-md transition transform hover:-translate-y-1 focus:outline-none">제출 및 결과 확인하기</button>
+            </div>
+            
+            <div id="quiz-result-summary" class="mt-8 hidden-section p-6 md:p-8 bg-white rounded-xl shadow-lg text-center border-4 border-green-500">
+                <h3 class="text-2xl md:text-3xl font-black mb-4 text-gray-800">최종 평가 결과</h3>
+                <p class="text-xl md:text-2xl mb-4">총점: <span id="final-score" class="font-black text-blue-600 text-3xl md:text-4xl"></span> / 100점</p>
+                <p id="submission-status" class="mt-4 text-base md:text-lg font-bold text-indigo-600 bg-indigo-50 p-4 rounded-lg"></p>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- 사용자 정의 알림 모달 (alert 대체) -->
+    <div id="custom-alert-modal" class="custom-modal flex">
+        <div class="modal-content text-center max-w-sm">
+            <h3 id="custom-alert-title" class="text-2xl font-bold mb-4 text-gray-800">알림</h3>
+            <p id="custom-alert-message" class="text-lg text-gray-600 mb-6"></p>
+            <button onclick="closeCustomAlert()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition focus:outline-none">확인</button>
+        </div>
+    </div>
+
+    <script>
+        // 구글 앱스 스크립트 배포 URL 입력란
+        // 백엔드 코드를 배포한 후 생성된 URL을 여기에 입력해야 시트로 데이터가 전송됨.
+        const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL"; 
+
+        // 사용자 정의 알림 함수
+        function showAlert(message, title="알림") {
+            document.getElementById('custom-alert-title').textContent = title;
+            document.getElementById('custom-alert-message').textContent = message;
+            document.getElementById('custom-alert-modal').style.display = 'flex';
+        }
+        function closeCustomAlert() {
+            document.getElementById('custom-alert-modal').style.display = 'none';
+        }
+
+        // 30개 단어 및 예시 (명사형 종결)
+        const vocabularyData = [
+            { word: "배려", meaning: "도와주거나 보살펴 주려고 마음을 씀.", example: "예: 무거운 짐을 들어 주는 배려." },
+            { word: "존중", meaning: "높이어 귀중하게 대함.", example: "예: 상대방의 의견 존중." },
+            { word: "언어폭력", meaning: "말로써 상처를 주는 일.", example: "예: 심한 욕설을 통한 언어폭력." },
+            { word: "가상 공간", meaning: "컴퓨터 통신망으로 형성된 공간.", example: "예: 익명성이 보장되는 가상 공간." },
+            { word: "모욕", meaning: "깔보고 욕되게 함.", example: "예: 다수 앞에서의 심한 모욕." },
+            { word: "비아냥", meaning: "얄밉게 빈정거리며 자꾸 놀림.", example: "예: 실패에 대한 비아냥." },
+            { word: "성찰", meaning: "자기의 마음을 반성하고 살핌.", example: "예: 지난 행동에 대한 자기 성찰." },
+            { word: "실태", meaning: "있는 그대로의 상태.", example: "예: 학교폭력의 심각한 실태." },
+            { word: "악의적", meaning: "나쁜 마음이나 좋지 않은 뜻을 가짐.", example: "예: 사실과 다른 악의적 소문." },
+            { word: "위협", meaning: "힘으로 으르고 협박함.", example: "예: 신체적 해를 끼치겠다는 위협." },
+            { word: "인격", meaning: "사람으로서의 품격.", example: "예: 남을 존중하는 훌륭한 인격." },
+            { word: "인식", meaning: "사물을 분별하고 판단하여 앎.", example: "예: 문제의 심각성 인식." },
+            { word: "차별", meaning: "등급 등의 차이를 두어서 구별함.", example: "예: 부당한 남녀 차별." },
+            { word: "갈등", meaning: "이해관계가 달라 서로 충돌함.", example: "예: 사소한 오해로 인한 갈등." },
+            { word: "공동체", meaning: "생활이나 목적을 같이하는 집단.", example: "예: 규칙을 지키는 학급 공동체." },
+            { word: "비수", meaning: "날이 예리하고 짧은 칼. (비유)", example: "예: 가슴에 꽂히는 비수." },
+            { word: "파편", meaning: "깨어지거나 부서진 조각. (비유)", example: "예: 상처를 내는 유리 파편." },
+            { word: "험담", meaning: "남의 흠을 들추어 헐뜯음.", example: "예: 뒤에서 몰래 하는 험담." },
+            { word: "비방", meaning: "남을 비웃고 헐뜯어서 말함.", example: "예: 근거 없는 사실로 비방." },
+            { word: "무심코", meaning: "아무런 뜻이나 생각이 없음.", example: "예: 무심코 던진 상처 주는 말." },
+            { word: "가식적", meaning: "거짓으로 꾸미는 상태.", example: "예: 진심이 없는 가식적 행동." },
+            { word: "원만", meaning: "일의 진행이 순조로움.", example: "예: 갈등의 원만한 해결." },
+            { word: "강요", meaning: "억지로 또는 강제로 요구함.", example: "예: 원치 않는 행동의 강요." },
+            { word: "악화", meaning: "형세가 나쁜 쪽으로 바뀜.", example: "예: 친구 관계의 심각한 악화." },
+            { word: "직접적", meaning: "중간 매개물 없이 바로 연결됨.", example: "예: 사건의 직접적 원인." },
+            { word: "훼손", meaning: "체면이나 명예를 손상함.", example: "예: 거짓 소문으로 인한 명예 훼손." },
+            { word: "편견", meaning: "공정하지 못하고 한쪽으로 치우친 생각.", example: "예: 외모에 대한 섣부른 편견." },
+            { word: "체면", meaning: "남을 대하기에 떳떳한 도리.", example: "예: 잘못된 행동으로 인한 체면 손상." },
+            { word: "손상", meaning: "명예나 가치 등을 떨어뜨림.", example: "예: 회복하기 힘든 자존심 손상." },
+            { word: "모멸감", meaning: "업신여겨지고 깔보이는 느낌.", example: "예: 심한 폭언으로 느낀 모멸감." }
+        ];
+
+        const quizData = [
+            {
+                id: 1, type: "OX", 
+                question: "부정적인 언어 표현으로 상대방의 마음에 상처를 주는 행위를 언어폭력이라고 한다.",
+                options: ["O", "X"], answer: 1,
+                explanation: "상대방의 마음에 상처를 주는 부정적인 언어 표현은 모두 언어폭력에 해당함."
+            },
+            {
+                id: 2, type: "OX", 
+                question: "언어폭력은 피해자에게만 상처를 주며 가해자의 인격에는 영향을 미치지 않는다.",
+                options: ["O", "X"], answer: 2,
+                explanation: "언어폭력은 피해자뿐만 아니라 가해자의 올바른 인격 형성에도 심각한 악영향을 미침."
+            },
+            {
+                id: 3, type: "SHORT", 
+                question: "다음 ( ) 안에 들어갈 알맞은 단어를 쓰시오. \n[공정하지 못하고 한쪽으로 치우친 생각]을 우리는 (   )(이)라고 부른다.",
+                options: [], answer: "편견",
+                explanation: "공정하지 못하고 한쪽으로 치우친 생각은 '편견'임."
+            },
+            {
+                id: 4, type: "SHORT", 
+                question: "다음 ( ) 안에 들어갈 알맞은 단어를 쓰시오. \n사람으로서의 품격을 의미하며, 언어폭력은 가해자 자신의 (   ) 형성에도 악영향을 미친다.",
+                options: [], answer: "인격",
+                explanation: "사람으로서 지녀야 할 품격은 '인격'임."
+            },
+            {
+                id: 5, type: "MULTIPLE", 
+                question: "다음 중 가상 공간에서 일어나는 언어폭력의 문제점으로 가장 적절하지 않은 것은?",
+                options: [
+                    "피해자에게 우울감, 불안감 등 정신적인 고통을 줌.",
+                    "시간과 장소를 가리지 않고 지속됨.",
+                    "가해자와 피해자가 대화를 통해 쉽게 오해를 풀 수 있음.",
+                    "피해자의 의사와 상관없이 내용이 빠르게 확산됨.",
+                    "피해자의 사회적 관계 유지에 어려움을 초래함."
+                ], answer: 3,
+                explanation: "가상 공간은 확산이 빠르고 익명성이 있어 오히려 오해를 풀기 어렵고 갈등 심화의 우려가 큼."
+            },
+            {
+                id: 6, type: "MULTIPLE", 
+                question: "다음 중 언어폭력의 사례에 해당하지 않는 것은?",
+                options: [
+                    "다수 앞에서 누군가의 명예를 훼손하는 발언.",
+                    "단점을 보완할 수 있도록 존중하는 태도로 하는 조언.",
+                    "개인 및 다수에게 수치심을 주는 모욕적인 말.",
+                    "정신이나 신체에 해를 끼칠 듯한 협박 문자 발송.",
+                    "상대방의 외모나 출신을 비하하며 놀리는 행위."
+                ], answer: 2,
+                explanation: "상대방을 존중하는 마음으로 진심 어린 조언을 건네는 것은 언어폭력에 해당하지 않음."
+            },
+            {
+                id: 7, type: "MULTIPLE", 
+                question: "서로 존중하는 말하기 방법으로 가장 적절한 것은?",
+                options: [
+                    "문제가 생기면 상대방의 탓임을 분명하게 지적함.",
+                    "자신의 감정을 숨기고 상대방의 의견에 무조건 동의함.",
+                    "상대방의 처지를 생각하며 '나 전달법'으로 감정을 표현함.",
+                    "상대방의 단점을 직접적으로 언급하여 억지로 고치게 함.",
+                    "불만이 있으면 단호하고 강압적인 말투로 상대방을 제압함."
+                ], answer: 3,
+                explanation: "'나 전달법'을 사용하여 상대를 비난하지 않고 내 감정과 기대를 표현하는 것이 올바른 방법임."
+            },
+            {
+                id: 8, type: "MULTIPLE", 
+                question: "'나 전달법'의 세 가지 필수 구성 요소가 바르게 묶인 것은?",
+                options: [
+                    "상황, 비난, 기대",
+                    "상황, 감정, 기대",
+                    "이유, 공격, 용서",
+                    "행동, 동정, 충고",
+                    "상황, 감정, 회피"
+                ], answer: 2,
+                explanation: "'나 전달법'은 문제 '상황', 그에 대한 나의 '감정', 그리고 상대에게 바라는 '기대'로 구성됨."
+            },
+            {
+                id: 9, type: "MULTIPLE", 
+                question: "다음 상황에서 '나 전달법'을 가장 바르게 사용한 것은? [상황: 친구가 약속 시간에 30분 늦음]",
+                options: [
+                    "너는 왜 만날 때마다 지각이야? 진짜 실망이다.",
+                    "또 늦었네? 넌 시간 개념이 전혀 없는 것 같아.",
+                    "네가 연락도 없이 늦어서 난 무슨 사고가 난 줄 알고 걱정했어. 다음부턴 늦으면 미리 연락해 줘.",
+                    "너 진짜 짜증나게 왜 늦어? 다음엔 나 절대 안 기다린다.",
+                    "괜찮아, 나도 방금 왔어. (속으로는 매우 화가 남)"
+                ], answer: 3,
+                explanation: "상대의 객관적 행동(늦음)으로 인한 나의 감정(걱정)과 기대(연락)를 명확하게 표현함."
+            },
+            {
+                id: 10, type: "MULTIPLE", 
+                question: "교과서 본문에서 상처를 주는 말의 폭력성을 비유적으로 표현한 단어의 짝으로 알맞은 것은?",
+                options: [
+                    "비수, 총알",
+                    "화살, 폭탄",
+                    "비수, 파편",
+                    "가시, 돌멩이",
+                    "유리 파편, 모래"
+                ], answer: 3,
+                explanation: "교과서에서는 언어폭력이 남기는 지울 수 없는 상처를 '비수'와 부서진 '파편'에 빗대어 설명함."
+            }
+        ];
+
+        function showSection(sectionName) {
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden-section'));
+            document.getElementById(sectionName + '-section').classList.remove('hidden-section');
+            if(sectionName === 'vocabulary') {
+                renderFlashcards();
+                if(!gameInitialized) initGame();
+            }
+        }
+
+        function openModal(modalId) { 
+            document.getElementById(modalId).style.display = "flex"; 
+        }
+        function closeModal(modalId) { 
+            document.getElementById(modalId).style.display = "none"; 
+        }
+        
+        window.onclick = function(event) {
+            if (event.target.classList.contains('custom-modal')) {
+                event.target.style.display = "none";
+            }
+        }
+
+        function renderFlashcards() {
+            const container = document.getElementById('flashcard-container');
+            if (container.children.length > 0) return; 
+            
+            vocabularyData.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'flashcard';
+                card.onclick = () => card.classList.toggle('flipped');
+                
+                card.innerHTML = `
+                    <div class="word-term font-bold text-2xl text-indigo-700">${item.word}</div>
+                    <div class="word-meaning">${item.meaning}</div>
+                    <div class="word-example">${item.example}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        let gameInitialized = false;
+        let isPlaying = false;
+        let planeX = 50; 
+        let bullets = [];
+        let words = [];
+        let currentTargetWord = null;
+        let score = 0;
+        let baseSpeed = 0.5; 
+        let gameLoopId;
+        let spawnTimeouts = [];
+        let lastShootTime = 0;
+        
+        let containerElem, planeElem, scoreDisplay, speedDisplay, targetDisplay;
+
+        function initGame() {
+            gameInitialized = true;
+            containerElem = document.getElementById('game-container');
+            planeElem = document.getElementById('player-plane');
+            scoreDisplay = document.getElementById('score-display');
+            speedDisplay = document.getElementById('speed-display');
+            targetDisplay = document.getElementById('target-meaning-display');
+
+            document.getElementById('start-game-btn').addEventListener('click', startGame);
+            
+            // Keyboard Controls
+            window.addEventListener('keydown', (e) => {
+                if(!isPlaying) return;
+                const step = 6;
+                if (e.key === 'ArrowLeft') {
+                    planeX = Math.max(5, planeX - step);
+                    planeElem.style.left = planeX + '%';
+                } else if (e.key === 'ArrowRight') {
+                    planeX = Math.min(95, planeX + step);
+                    planeElem.style.left = planeX + '%';
+                } else if (e.key === ' ') { 
+                    e.preventDefault();
+                    fireBullet();
+                }
+            });
+
+            // Touch Controls for Mobile
+            let isDragging = false;
+            let autoFireInterval;
+
+            containerElem.addEventListener('touchstart', (e) => {
+                if(!isPlaying) return;
+                isDragging = true;
+                updatePlanePosition(e.touches[0].clientX);
+                // Auto fire on touch hold
+                autoFireInterval = setInterval(() => {
+                    fireBullet();
+                }, 300);
+            }, {passive: true});
+
+            containerElem.addEventListener('touchmove', (e) => {
+                if(!isPlaying || !isDragging) return;
+                updatePlanePosition(e.touches[0].clientX);
+            }, {passive: true});
+
+            const endTouch = () => {
+                isDragging = false;
+                clearInterval(autoFireInterval);
+            };
+
+            containerElem.addEventListener('touchend', endTouch);
+            containerElem.addEventListener('touchcancel', endTouch);
+        }
+
+        function updatePlanePosition(clientX) {
+            const rect = containerElem.getBoundingClientRect();
+            let xPos = clientX - rect.left;
+            let percentage = (xPos / rect.width) * 100;
+            planeX = Math.max(5, Math.min(95, percentage));
+            planeElem.style.left = planeX + '%';
+        }
+
+        function startGame() {
+            document.getElementById('game-overlay').style.display = 'none';
+            isPlaying = true;
+            score = 0;
+            baseSpeed = 0.5; 
+            updateScoreDisplay();
+            
+            bullets.forEach(b => b.elem.remove());
+            words.forEach(w => w.elem.remove());
+            bullets = [];
+            words = [];
+            spawnTimeouts.forEach(clearTimeout);
+            spawnTimeouts = [];
+            
+            setNewTarget();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function setNewTarget() {
+            spawnTimeouts.forEach(clearTimeout);
+            spawnTimeouts = [];
+
+            const randomVocab = vocabularyData[Math.floor(Math.random() * vocabularyData.length)];
+            currentTargetWord = randomVocab;
+            targetDisplay.textContent = `뜻: ${randomVocab.meaning}`;
+            
+            spawnWord(randomVocab.word, true);
+            
+            // Spawn wrong words slightly later
+            spawnTimeouts.push(setTimeout(() => spawnWord(getRandomWrongWord(), false), 1000));
+            spawnTimeouts.push(setTimeout(() => spawnWord(getRandomWrongWord(), false), 2000));
+        }
+
+        function getRandomWrongWord() {
+            let wrongWord;
+            do {
+                wrongWord = vocabularyData[Math.floor(Math.random() * vocabularyData.length)].word;
+            } while (wrongWord === currentTargetWord.word);
+            return wrongWord;
+        }
+
+        function spawnWord(text, isCorrect) {
+            if(!isPlaying) return;
+            const elem = document.createElement('div');
+            elem.className = 'falling-word';
+            elem.textContent = text;
+            const startX = 10 + Math.random() * 80; 
+            elem.style.left = startX + '%';
+            elem.style.top = '-40px';
+            containerElem.appendChild(elem);
+            
+            words.push({ elem: elem, text: text, isCorrect: isCorrect, y: -40 });
+        }
+
+        function fireBullet() {
+            const now = Date.now();
+            if (now - lastShootTime < 150) return; // Fire rate limit
+            lastShootTime = now;
+
+            const elem = document.createElement('div');
+            elem.className = 'bullet';
+            elem.style.left = `calc(${planeX}% - 3px)`; 
+            elem.style.bottom = '70px'; 
+            containerElem.appendChild(elem);
+            bullets.push({ elem: elem, y: 70 });
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = score;
+            speedDisplay.textContent = baseSpeed.toFixed(1);
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            // Move bullets up
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y += 8;
+                bullets[i].elem.style.bottom = bullets[i].y + 'px';
+                
+                // Remove if out of bounds
+                if (bullets[i].y > containerElem.clientHeight) {
+                    bullets[i].elem.remove();
+                    bullets.splice(i, 1);
+                }
+            }
+
+            let correctWordHit = false;
+            let correctWordMissed = false;
+
+            // Move words down
+            for (let i = words.length - 1; i >= 0; i--) {
+                words[i].y += baseSpeed;
+                words[i].elem.style.top = words[i].y + 'px';
+
+                // Check if word hits the bottom
+                if (words[i].y > containerElem.clientHeight) {
+                    if (words[i].isCorrect) {
+                        correctWordMissed = true;
+                    }
+                    words[i].elem.remove();
+                    words.splice(i, 1);
+                    continue;
+                }
+
+                // Check collision with bullets
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (checkCollision(words[i].elem, bullets[j].elem)) {
+                        if (words[i].isCorrect) {
+                            score += 10;
+                            baseSpeed += 0.1;
+                            correctWordHit = true;
+                        } else {
+                            score = Math.max(0, score - 5);
+                        }
+                        updateScoreDisplay();
+                        
+                        // Remove collided word and bullet
+                        words[i].elem.remove();
+                        words.splice(i, 1);
+                        bullets[j].elem.remove();
+                        bullets.splice(j, 1);
+                        break; // Move to next word since this one is destroyed
+                    }
+                }
+            }
+
+            // Handle round progression
+            if (correctWordHit || correctWordMissed) {
+                // Clear remaining words
+                words.forEach(w => w.elem.remove());
+                words = [];
+                setNewTarget();
+            }
+
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function checkCollision(wordElem, bulletElem) {
+            const rect1 = wordElem.getBoundingClientRect();
+            const rect2 = bulletElem.getBoundingClientRect();
+            
+            return !(rect1.right < rect2.left || 
+                     rect1.left > rect2.right || 
+                     rect1.bottom < rect2.top || 
+                     rect1.top > rect2.bottom);
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('quiz-form');
+            container.innerHTML = '';
+            
+            quizData.forEach((q, index) => {
+                const qDiv = document.createElement('div');
+                qDiv.className = 'quiz-question shadow-sm';
+                let optionsHtml = '';
+                
+                if (q.type === 'OX' || q.type === 'MULTIPLE') {
+                    q.options.forEach((opt, i) => {
+                        optionsHtml += `
+                            <label class="block mb-2 p-3 bg-slate-50 hover:bg-indigo-50 rounded-lg cursor-pointer border border-transparent hover:border-indigo-200 transition">
+                                <input type="radio" name="q${q.id}" value="${i + 1}" class="mr-3 transform scale-125 text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-gray-800">${opt}</span>
+                            </label>
+                        `;
+                    });
+                } else if (q.type === 'SHORT') {
+                    optionsHtml = `<input type="text" name="q${q.id}" class="w-full p-3 border border-gray-300 rounded-lg mt-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="정답을 입력하세요">`;
+                }
+
+                qDiv.innerHTML = `
+                    <p class="font-bold text-lg md:text-xl mb-4 text-gray-800">${index + 1}. ${q.question.replace(/\n/g, '<br>')}</p>
+                    <div class="space-y-2">
+                        ${optionsHtml}
+                    </div>
+                    <div id="feedback-q${q.id}" class="quiz-feedback"></div>
+                `;
+                container.appendChild(qDiv);
+            });
+        }
+
+        document.getElementById('start-quiz-btn').addEventListener('click', () => {
+            const grade = document.getElementById('info-grade').value;
+            const cls = document.getElementById('info-class').value;
+            const num = document.getElementById('info-number').value;
+            const name = document.getElementById('info-name').value;
+            
+            if(!grade || !cls || !num || !name) {
+                showAlert("모든 인적 사항을 입력해주세요.");
+                return;
+            }
+            
+            renderQuiz();
+            document.getElementById('student-info-form').classList.add('hidden-section');
+            document.getElementById('quiz-container').classList.remove('hidden-section');
+            
+            // Scroll to quiz
+            setTimeout(() => {
+                document.getElementById('quiz-container').scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        });
+
+        document.getElementById('submit-quiz-btn').addEventListener('click', () => {
+            let totalScore = 0;
+            let allAnswered = true;
+            let results = [];
+            
+            quizData.forEach(q => {
+                let userAnswer;
+                if (q.type === 'OX' || q.type === 'MULTIPLE') {
+                    const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
+                    if (selected) userAnswer = selected.value;
+                } else if (q.type === 'SHORT') {
+                    const input = document.querySelector(`input[name="q${q.id}"]`);
+                    if (input) userAnswer = input.value.trim();
+                }
+                
+                if (!userAnswer) {
+                    allAnswered = false;
+                } else {
+                    let isCorrect = false;
+                    if (q.type === 'SHORT') {
+                        isCorrect = (userAnswer === q.answer.toString());
+                    } else {
+                        isCorrect = (parseInt(userAnswer) === q.answer);
+                    }
+                    
+                    if (isCorrect) {
+                        totalScore += 10; // 10 questions = 100 points
+                    }
+                    
+                    results.push({
+                        id: q.id,
+                        isCorrect: isCorrect,
+                        explanation: q.explanation
+                    });
+                }
+            });
+            
+            if (!allAnswered) {
+                showAlert("풀지 않은 문항이 있습니다. 모든 문항에 답해주세요.");
+                return;
+            }
+            
+            // Show feedback
+            results.forEach(res => {
+                const feedbackDiv = document.getElementById(`feedback-q${res.id}`);
+                feedbackDiv.style.display = 'block';
+                if (res.isCorrect) {
+                    feedbackDiv.className = 'quiz-feedback feedback-correct';
+                    feedbackDiv.innerHTML = `✅ 정답입니다! <br><span class="text-sm font-normal block mt-2 text-green-800">${res.explanation}</span>`;
+                } else {
+                    feedbackDiv.className = 'quiz-feedback feedback-incorrect';
+                    feedbackDiv.innerHTML = `❌ 오답입니다. <br><span class="text-sm font-normal block mt-2 text-red-800">${res.explanation}</span>`;
+                }
+            });
+            
+            // Disable inputs
+            const formInputs = document.getElementById('quiz-form').querySelectorAll('input');
+            formInputs.forEach(input => input.disabled = true);
+            document.getElementById('submit-quiz-btn').style.display = 'none';
+            
+            // Show final score
+            const resultSummary = document.getElementById('quiz-result-summary');
+            resultSummary.classList.remove('hidden-section');
+            document.getElementById('final-score').textContent = totalScore;
+            
+            // Scroll to result
+            setTimeout(() => {
+                resultSummary.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 300);
+
+            // Send data to Apps Script
+            sendDataToScript(totalScore);
+        });
+
+        function sendDataToScript(score) {
+            const grade = document.getElementById('info-grade').value;
+            const cls = document.getElementById('info-class').value;
+            const num = document.getElementById('info-number').value;
+            const name = document.getElementById('info-name').value;
+            
+            const statusText = document.getElementById('submission-status');
+            statusText.textContent = "결과를 서버로 전송 중입니다...";
+            statusText.className = "mt-4 text-base md:text-lg font-bold text-yellow-700 bg-yellow-50 p-4 rounded-lg";
+            
+            if(SCRIPT_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+                 setTimeout(() => {
+                     statusText.textContent = "Google Apps Script URL이 설정되지 않아 데이터가 전송되지 않았습니다. (테스트 환경)";
+                     statusText.className = "mt-4 text-base md:text-lg font-bold text-gray-700 bg-gray-100 p-4 rounded-lg";
+                 }, 1000);
+                 return;
+            }
+            
+            const data = {
+                grade: grade,
+                class: cls,
+                number: num,
+                name: name,
+                score: score,
+                timestamp: new Date().toISOString()
+            };
+            
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // CORS 우회를 위해 no-cors 사용
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            }).then(() => {
+                statusText.textContent = "결과가 성공적으로 선생님께 제출되었습니다!";
+                statusText.className = "mt-4 text-base md:text-lg font-bold text-green-700 bg-green-50 p-4 rounded-lg";
+            }).catch(error => {
+                statusText.textContent = "제출 중 오류가 발생했습니다. 선생님께 문의하세요.";
+                statusText.className = "mt-4 text-base md:text-lg font-bold text-red-700 bg-red-50 p-4 rounded-lg";
+                console.error('Submission Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
